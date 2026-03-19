@@ -1,2 +1,2 @@
 # AI-Job-Application-Assistant
-readme to be added once porgress is made 
+readme to be added once progress is made 
