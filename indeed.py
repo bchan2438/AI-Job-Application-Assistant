@@ -1,5 +1,7 @@
 from urllib.parse import urlencode
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 def build_indeed_search_url(
     query: str,
     location: str = "",
@@ -78,3 +80,60 @@ def fetch_page_html(url: str, headless: bool = True, timeout_ms: int = 30000) ->
         finally:
             context.close()
             browser.close()
+def parse_posting_url(html: str) -> dict | None:
+    soup = BeautifulSoup(html, "html.parser")
+
+
+    new_cards = soup.find_all("li", attrs={"data-hns-job-listing": True})
+
+    for card in new_cards:
+        title_link = card.find("a", href=True)
+        if not title_link:
+            continue
+
+        title = title_link.get_text(" ", strip=True) or None
+        job_url = urljoin("https://ca.indeed.com", title_link["href"])
+
+  
+
+        if title and job_url:
+            return {
+                "title": title,
+                "job_url": job_url,
+            }
+
+    
+    old_cards = soup.find_all("td", class_="resultContent")
+
+    for card in old_cards:
+        title_tag = card.find("h2", class_="jobTitle")
+        link = title_tag.find("a", href=True) if title_tag else None
+
+        if not link:
+            continue
+
+        title = link.get_text(" ", strip=True)
+        job_url = urljoin("https://ca.indeed.com", link["href"])
+
+
+        return {
+            "title": title,
+            "job_url": job_url,
+        }
+
+    return None
+url = build_indeed_search_url(
+    query="investments",
+    location="Toronto, ON",
+    start=0,
+    remote=False,
+    days=1,
+    country="ca"
+)
+
+
+html = fetch_page_html(url, headless=False)
+job = parse_posting_url(html)
+
+
+
